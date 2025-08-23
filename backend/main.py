@@ -1,39 +1,52 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+import os
 import requests
+from fastapi import FastAPI, HTTPException
 from bs4 import BeautifulSoup
 
 app = FastAPI()
 
-# Allow frontend access (CORS)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # change this to your frontend URL in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@app.get("/")
+def root():
+    return {"message": "RAOD3R backend is running 🎉"}
 
 @app.get("/story/{work_id}")
 def get_story(work_id: int):
+    """
+    Fetch AO3 story by work ID.
+    Example: /story/123456
+    """
     url = f"https://archiveofourown.org/works/{work_id}?view_full_work=true"
-    res = requests.get(url)
+    headers = {"User-Agent": "Mozilla/5.0"}  # AO3 blocks bots without this
+    
+    try:
+        r = requests.get(url, headers=headers)
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail="Story not found")
 
-    if res.status_code != 200:
-        raise HTTPException(status_code=404, detail="Story not found")
+        soup = BeautifulSoup(r.text, "html.parser")
 
-    soup = BeautifulSoup(res.text, "html.parser")
+        # Extract metadata
+        title = soup.find("h2", class_="title").get_text(strip=True) if soup.find("h2", class_="title") else "Untitled"
+        author = soup.find("a", rel="author").get_text(strip=True) if soup.find("a", rel="author") else "Unknown"
+        summary = soup.find("blockquote", class_="userstuff").get_text(strip=True) if soup.find("blockquote", class_="userstuff") else ""
+        
+        # Extract story text (all chapters if full view)
+        content_divs = soup.find_all("div", class_="userstuff")
+        chapters = [div.get_text("\n", strip=True) for div in content_divs]
 
-    # Extract fields
-    title = soup.select_one("h2.title").get_text(strip=True)
-    author = soup.select_one("a[rel='author']").get_text(strip=True)
-    summary_el = soup.select_one("blockquote.summary")
-    summary = summary_el.get_text(strip=True) if summary_el else "No summary"
-    content = str(soup.select_one("div#chapters"))
+        return {
+            "id": work_id,
+            "title": title,
+            "author": author,
+            "summary": summary,
+            "chapters": chapters
+        }
 
-    return {
-        "title": title,
-        "author": author,
-        "summary": summary,
-        "content": content,
-    }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
