@@ -2,6 +2,7 @@ const CACHE_NAME = "raod3r-cache-v1";
 const urlsToCache = [
   "/",
   "/index.html",
+  "/library.html",
   "/manifest.json",
   "/favicon.png",
 ];
