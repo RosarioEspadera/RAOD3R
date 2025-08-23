@@ -30,6 +30,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/idb@7/build/iife/index-min.js"></script>
   <script>
+    
     const { openDB } = idb;
 
     async function loadLibrary() {
@@ -60,6 +61,17 @@
         container.appendChild(card);
       });
     }
+    
+    function saveReaderState(storyId, chapterIndex) {
+  localStorage.setItem("currentReader", JSON.stringify({
+    storyId: storyId,
+    chapter: chapterIndex
+  }));
+
+  // Enable the "Reader" tab
+  document.getElementById("reader-tab").classList.remove("disabled");
+}
+
 
     async function readOffline(id) {
       localStorage.setItem("offlineStoryId", id);
@@ -68,5 +80,55 @@
 
     loadLibrary();
   </script>
+  <!-- Bottom Navigation Bar -->
+<nav class="bottom-nav">
+  <a href="index.html" id="nav-search">🔍<br>Search</a>
+  <a href="library.html" id="nav-library">📚<br>Library</a>
+  <a href="#" id="nav-settings">⚙️<br>Settings</a>
+  <a href="reader.html" id="reader-tab" class="disabled">Reader</a>
+</nav>
+
+<style>
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: #222;
+    color: white;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0.5rem 0;
+    font-family: Arial, sans-serif;
+    z-index: 1000;
+  }
+  .bottom-nav a {
+    color: white;
+    text-decoration: none;
+    text-align: center;
+    flex: 1;
+    font-size: 0.9rem;
+    padding: 0.3rem;
+  }
+  .bottom-nav a.active {
+    color: #ffd700; /* gold highlight */
+    border-top: 2px solid #ffd700;
+    font-weight: bold;
+  }
+</style>
+
+<script>
+  // Highlight active tab based on current page
+  const path = window.location.pathname;
+  if (path.includes("index.html") || path === "/" || path === "/RAOD3R/") {
+    document.getElementById("nav-search").classList.add("active");
+  } else if (path.includes("library.html")) {
+    document.getElementById("nav-library").classList.add("active");
+  } else {
+    document.getElementById("nav-settings").classList.add("active");
+  }
+</script>
+
 </body>
 </html>
