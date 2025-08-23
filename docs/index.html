@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>RAOD3R – AO3 Reader</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="favicon.png" type="image/png">
   <style>
     /* ====== Theme Variables ====== */
     :root {
@@ -141,30 +142,60 @@
     /* ====== Reader View ====== */
     #reader {
       display: none;
-      padding: 1rem 2rem;
-      max-width: 800px;
-      margin: auto;
+      padding: 2rem 2.5rem;
+      max-width: 850px;
+      margin: 2rem auto;
       background: var(--card-bg);
       box-shadow: 0 4px 12px var(--shadow);
       border-radius: 12px;
       transition: background 0.3s, color 0.3s;
+      font-family: "Merriweather", Georgia, serif;
       font-size: var(--font-size);
+      line-height: 1.8;
+      letter-spacing: 0.3px;
+    }
+    #story-content {
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out;
+    }
+    #story-content.visible {
+      opacity: 1;
     }
     #reader h2 {
       margin-top: 0;
+      font-size: 2rem;
+      text-align: center;
     }
-    #reader .chapter {
+    #reader p em {
+      display: block;
+      margin-bottom: 1rem;
+      text-align: center;
+      font-style: italic;
+      color: #888;
+    }
+    .chapter {
       margin-bottom: 2rem;
-      line-height: 1.6;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #ccc;
     }
-    #back-btn, .nav-btn {
-      margin: 0.5rem;
-      padding: 0.6rem 1rem;
+    /* Chapter Nav Buttons */
+    #chapter-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 1rem;
+    }
+    #chapter-nav button {
+      padding: 0.6rem 1.2rem;
       border: none;
       border-radius: 6px;
       background: var(--button-bg);
       color: var(--button-text);
+      font-size: 0.95rem;
       cursor: pointer;
+      transition: background 0.2s;
+    }
+    #chapter-nav button:hover {
+      opacity: 0.85;
     }
 
     /* ====== Font Adjuster ====== */
@@ -219,8 +250,8 @@
     </div>
     <div id="story-content"></div>
     <div id="chapter-nav">
-      <button class="nav-btn" onclick="prevChapter()">⬅ Previous</button>
-      <button class="nav-btn" onclick="nextChapter()">Next ➡</button>
+      <button onclick="prevChapter()">⬅ Previous</button>
+      <button onclick="nextChapter()">Next ➡</button>
     </div>
   </section>
 
@@ -273,13 +304,17 @@
 
     function showChapter() {
       const content = document.getElementById("story-content");
-      content.innerHTML = `
-        <h2>${currentStory.title}</h2>
-        <p><em>By ${currentStory.author}</em></p>
-        <p>${currentStory.summary}</p>
-        <div class="chapter">${currentStory.chapters[currentChapter]}</div>
-        <p><em>Chapter ${currentChapter + 1} of ${currentStory.chapters.length}</em></p>
-      `;
+      content.classList.remove("visible");
+      setTimeout(() => {
+        content.innerHTML = `
+          <h2>${currentStory.title}</h2>
+          <p><em>By ${currentStory.author}</em></p>
+          <p>${currentStory.summary}</p>
+          <div class="chapter">${currentStory.chapters[currentChapter]}</div>
+          <p><em>Chapter ${currentChapter + 1} of ${currentStory.chapters.length}</em></p>
+        `;
+        content.classList.add("visible");
+      }, 200);
     }
 
     function nextChapter() {
