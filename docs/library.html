@@ -7,17 +7,20 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#6C63FF">
   <style>
-    body { font-family: "Segoe UI", Roboto, sans-serif; background:#f4f4f9; margin:0; }
+    body { font-family: "Segoe UI", Roboto, sans-serif; background:#f4f4f9; margin:0; padding-bottom:70px; }
     header { background:#6200ea; color:#fff; padding:1rem; text-align:center; }
     #library { padding:1rem; display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:1rem; }
     .story-card {
       background:#fff; padding:1rem; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.1);
+      display:flex; flex-direction:column; justify-content:space-between;
     }
     .story-card h3 { margin:0 0 0.5rem; font-size:1.2rem; }
     .story-card button {
       padding:0.4rem 0.8rem; border:none; border-radius:6px;
       background:#6200ea; color:#fff; cursor:pointer;
+      transition: background 0.2s ease;
     }
+    .story-card button:hover { background:#4b00b5; }
   </style>
 </head>
 <body>
@@ -28,107 +31,139 @@
 
   <section id="library"></section>
 
+  <!-- IDB Library -->
   <script src="https://cdn.jsdelivr.net/npm/idb@7/build/iife/index-min.js"></script>
-  <script>
-    
-    const { openDB } = idb;
+ <script>
+  const { openDB } = idb;
 
-    async function loadLibrary() {
-      let db = await openDB("raod3r", 1, {
-        upgrade(db) {
-          if (!db.objectStoreNames.contains("stories")) {
-            db.createObjectStore("stories", { keyPath: "id" });
-          }
+  async function loadLibrary() {
+    let db = await openDB("raod3r", 1, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains("stories")) {
+          db.createObjectStore("stories", { keyPath: "id" });
         }
-      });
-      const stories = await db.getAll("stories");
-      const container = document.getElementById("library");
-      container.innerHTML = "";
-
-      if (!stories.length) {
-        container.innerHTML = "<p>No stories saved yet.</p>";
-        return;
       }
+    });
+    const stories = await db.getAll("stories");
+    const container = document.getElementById("library");
+    container.innerHTML = "";
 
-      stories.forEach(story => {
-        const card = document.createElement("div");
-        card.className = "story-card";
-        card.innerHTML = `
-          <h3>${story.title}</h3>
-          <p><b>By:</b> ${story.author}</p>
-          <button onclick="readOffline('${story.id}')">📖 Read</button>
-        `;
-        container.appendChild(card);
-      });
-    }
-    
-    function saveReaderState(storyId, chapterIndex) {
-  localStorage.setItem("currentReader", JSON.stringify({
-    storyId: storyId,
-    chapter: chapterIndex
-  }));
-
-  // Enable the "Reader" tab
-  document.getElementById("reader-tab").classList.remove("disabled");
-}
-
-
-    async function readOffline(id) {
-      localStorage.setItem("offlineStoryId", id);
-      window.location.href = "index.html#offline";
+    if (!stories.length) {
+      container.innerHTML = "<p>No stories saved yet.</p>";
+      return;
     }
 
-    loadLibrary();
-  </script>
-  <!-- Bottom Navigation Bar -->
-<nav class="bottom-nav">
-  <a href="index.html" id="nav-search">🔍<br>Search</a>
-  <a href="library.html" id="nav-library">📚<br>Library</a>
-  <a href="#" id="nav-settings">⚙️<br>Settings</a>
-  <a href="reader.html" id="reader-tab" class="disabled">Reader</a>
-</nav>
+    stories.forEach(story => {
+      const card = document.createElement("div");
+      card.className = "story-card";
 
-<style>
-  .bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    background: #222;
-    color: white;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    padding: 0.5rem 0;
-    font-family: Arial, sans-serif;
-    z-index: 1000;
-  }
-  .bottom-nav a {
-    color: white;
-    text-decoration: none;
-    text-align: center;
-    flex: 1;
-    font-size: 0.9rem;
-    padding: 0.3rem;
-  }
-  .bottom-nav a.active {
-    color: #ffd700; /* gold highlight */
-    border-top: 2px solid #ffd700;
-    font-weight: bold;
-  }
-</style>
+      // Find saved reading progress
+      const currentReader = JSON.parse(localStorage.getItem("currentReader") || "{}");
+      const isReading = currentReader.storyId === story.id;
+      const progress = isReading ? `(Last at chapter ${currentReader.chapter + 1})` : "";
 
-<script>
-  // Highlight active tab based on current page
-  const path = window.location.pathname;
-  if (path.includes("index.html") || path === "/" || path === "/RAOD3R/") {
-    document.getElementById("nav-search").classList.add("active");
-  } else if (path.includes("library.html")) {
-    document.getElementById("nav-library").classList.add("active");
-  } else {
-    document.getElementById("nav-settings").classList.add("active");
+      card.innerHTML = `
+        <h3>${story.title}</h3>
+        <p><b>By:</b> ${story.author}</p>
+        <p style="font-size:0.9rem; color:gray;">${progress}</p>
+        <button onclick="readOffline('${story.id}')">📖 Read</button>
+      `;
+      container.appendChild(card);
+    });
   }
+
+  // Save last reading state
+  function saveReaderState(storyId, chapterIndex = 0) {
+    localStorage.setItem("currentReader", JSON.stringify({
+      storyId: storyId,
+      chapter: chapterIndex
+    }));
+
+    document.getElementById("reader-tab").classList.remove("disabled");
+  }
+
+  // Open reader.html, resuming progress if available
+  async function readOffline(id) {
+    const currentReader = JSON.parse(localStorage.getItem("currentReader") || "{}");
+
+    // If this story was being read, resume last chapter
+    let chapterIndex = 0;
+    if (currentReader.storyId === id) {
+      chapterIndex = currentReader.chapter;
+    }
+
+    localStorage.setItem("offlineStoryId", id);
+    saveReaderState(id, chapterIndex);
+
+    // Pass chapter index to reader.html
+    localStorage.setItem("resumeChapter", chapterIndex);
+    window.location.href = "reader.html";
+  }
+
+  loadLibrary();
 </script>
+
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-nav">
+    <a href="index.html" id="nav-search">🔍<br>Search</a>
+    <a href="library.html" id="nav-library">📚<br>Library</a>
+    <a href="#" id="nav-settings">⚙️<br>Settings</a>
+    <a href="reader.html" id="reader-tab" class="disabled">📖<br>Reader</a>
+  </nav>
+
+  <style>
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #222;
+      color: white;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 0.5rem 0;
+      font-family: Arial, sans-serif;
+      z-index: 1000;
+    }
+    .bottom-nav a {
+      color: white;
+      text-decoration: none;
+      text-align: center;
+      flex: 1;
+      font-size: 0.9rem;
+      padding: 0.3rem;
+    }
+    .bottom-nav a.active {
+      color: #ffd700; /* gold highlight */
+      border-top: 2px solid #ffd700;
+      font-weight: bold;
+    }
+    .bottom-nav a.disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+  </style>
+
+  <script>
+    // Highlight active tab based on current page
+    const path = window.location.pathname;
+    if (path.includes("index.html") || path === "/" || path === "/RAOD3R/") {
+      document.getElementById("nav-search").classList.add("active");
+    } else if (path.includes("library.html")) {
+      document.getElementById("nav-library").classList.add("active");
+    } else if (path.includes("reader.html")) {
+      document.getElementById("reader-tab").classList.add("active");
+    } else {
+      document.getElementById("nav-settings").classList.add("active");
+    }
+
+    // Auto-enable Reader tab if there’s saved state
+    if (localStorage.getItem("currentReader")) {
+      document.getElementById("reader-tab").classList.remove("disabled");
+    }
+  </script>
 
 </body>
 </html>
