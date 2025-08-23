@@ -15,6 +15,7 @@
       --button-bg: #6200ea;
       --button-text: #fff;
       --shadow: rgba(0,0,0,0.1);
+      --font-size: 1rem;
     }
     body.dark {
       --bg: #121212;
@@ -147,6 +148,7 @@
       box-shadow: 0 4px 12px var(--shadow);
       border-radius: 12px;
       transition: background 0.3s, color 0.3s;
+      font-size: var(--font-size);
     }
     #reader h2 {
       margin-top: 0;
@@ -155,9 +157,25 @@
       margin-bottom: 2rem;
       line-height: 1.6;
     }
-    #back-btn {
-      margin-bottom: 1rem;
+    #back-btn, .nav-btn {
+      margin: 0.5rem;
       padding: 0.6rem 1rem;
+      border: none;
+      border-radius: 6px;
+      background: var(--button-bg);
+      color: var(--button-text);
+      cursor: pointer;
+    }
+
+    /* ====== Font Adjuster ====== */
+    #font-controls {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    #font-controls button {
+      padding: 0.4rem 0.8rem;
       border: none;
       border-radius: 6px;
       background: var(--button-bg);
@@ -195,11 +213,21 @@
   <!-- Reader -->
   <section id="reader">
     <button id="back-btn" onclick="closeReader()">⬅ Back</button>
+    <div id="font-controls">
+      <button onclick="adjustFont(-0.1)">A-</button>
+      <button onclick="adjustFont(0.1)">A+</button>
+    </div>
     <div id="story-content"></div>
+    <div id="chapter-nav">
+      <button class="nav-btn" onclick="prevChapter()">⬅ Previous</button>
+      <button class="nav-btn" onclick="nextChapter()">Next ➡</button>
+    </div>
   </section>
 
   <script>
     const API = "https://raod3r.onrender.com";
+    let currentStory = null;
+    let currentChapter = 0;
 
     async function doSearch() {
       const tag = document.getElementById("tag").value || "romance";
@@ -237,20 +265,48 @@
       reader.style.display = "block";
 
       const res = await fetch(`${API}/story/${id}`);
-      const story = await res.json();
+      currentStory = await res.json();
+      currentChapter = 0;
 
+      showChapter();
+    }
+
+    function showChapter() {
       const content = document.getElementById("story-content");
       content.innerHTML = `
-        <h2>${story.title}</h2>
-        <p><em>By ${story.author}</em></p>
-        <p>${story.summary}</p>
-        ${story.chapters.map(c => `<div class="chapter">${c}</div>`).join("")}
+        <h2>${currentStory.title}</h2>
+        <p><em>By ${currentStory.author}</em></p>
+        <p>${currentStory.summary}</p>
+        <div class="chapter">${currentStory.chapters[currentChapter]}</div>
+        <p><em>Chapter ${currentChapter + 1} of ${currentStory.chapters.length}</em></p>
       `;
+    }
+
+    function nextChapter() {
+      if (currentChapter < currentStory.chapters.length - 1) {
+        currentChapter++;
+        showChapter();
+      }
+    }
+
+    function prevChapter() {
+      if (currentChapter > 0) {
+        currentChapter--;
+        showChapter();
+      }
     }
 
     function closeReader() {
       document.getElementById("reader").style.display = "none";
       document.getElementById("results").style.display = "grid";
+    }
+
+    // === Font Adjuster ===
+    function adjustFont(delta) {
+      const style = getComputedStyle(document.documentElement);
+      let size = parseFloat(style.getPropertyValue('--font-size'));
+      size = Math.max(0.6, Math.min(2.5, size + delta));
+      document.documentElement.style.setProperty('--font-size', size + "rem");
     }
 
     // === Dark Mode Toggle ===
