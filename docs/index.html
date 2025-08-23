@@ -440,6 +440,16 @@
 
   // Auto-load romance on first visit
   doSearch();
+    
+    // If opened from Library
+window.addEventListener("DOMContentLoaded", async () => {
+  const offlineId = localStorage.getItem("offlineStoryId");
+  if (offlineId) {
+    localStorage.removeItem("offlineStoryId");
+    openStory(offlineId);
+  }
+});
+
   </script>
 </body>
 </html>
