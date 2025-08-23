@@ -1,10 +1,20 @@
 import os
 import requests
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from bs4 import BeautifulSoup
 
 app = FastAPI()
 
+
+# Allow frontend (GitHub Pages) to access backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # you can replace "*" with ["https://rosarioespadera.github.io"] for more security
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 BASE_URL = "https://archiveofourown.org"
 
 @app.get("/")
