@@ -62,27 +62,28 @@ def get_story(work_id: int):
 def search_stories(
     tag: str = Query("", description="Search tag or keyword"),
     fandom: str = Query("", description="Fandom filter"),
-    rating: str = Query("", description="Rating filter (G, T, M, E)"),
+    rating: str = Query("", description="Rating filter (G, T, M, E, NR)"),
     complete: bool = Query(False, description="Only completed works"),
-    sort: str = Query("revised_at", description="Sort method (revised_at, hits, kudos, comments, bookmarks)"),
+    sort: str = Query("revised_at", description="Sort method"),
     page: int = 1
 ):
-    """
-    Search AO3 stories with advanced filters.
-    Example: /search?tag=romance&fandom=Harry+Potter&rating=T&complete=true&sort=hits&page=1
-    """
+    # AO3 rating map
+    rating_map = {"NR": "9", "G": "10", "T": "11", "M": "12", "E": "13"}
+    rating_id = rating_map.get(rating.upper(), "")
+
     params = {
         "work_search[query]": tag,
         "work_search[fandom_names]": fandom,
-        "work_search[rating_ids]": rating,
+        "work_search[rating_ids]": rating_id,
         "work_search[complete]": "T" if complete else "",
         "sort_column": sort,
+        "page": page
     }
     url = f"{BASE_URL}/works/search"
     headers = {"User-Agent": "Mozilla/5.0"}
 
     try:
-        r = requests.get(url, params={**params, "page": page}, headers=headers)
+        r = requests.get(url, params=params, headers=headers)
         if r.status_code != 200:
             raise HTTPException(status_code=r.status_code, detail="Search failed")
 
@@ -96,7 +97,6 @@ def search_stories(
             link = BASE_URL + title_tag["href"] if title_tag else None
             work_id = int(link.split("/works/")[1].split("?")[0]) if link else None
             author = result.find("a", rel="author").get_text(strip=True) if result.find("a", rel="author") else "Unknown"
-
             summary_tag = result.find("blockquote", class_="userstuff summary")
             summary = summary_tag.get_text(strip=True) if summary_tag else ""
 
@@ -109,17 +109,14 @@ def search_stories(
             })
 
         return {
-            "tag": tag,
-            "fandom": fandom,
-            "rating": rating,
-            "complete": complete,
-            "sort": sort,
-            "page": page,
+            "query": tag,
+            "count": len(works),
             "results": works
         }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 if __name__ == "__main__":
