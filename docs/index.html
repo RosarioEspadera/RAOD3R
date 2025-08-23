@@ -1,172 +1,277 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RAOD3R - AO3 Reader</title>
+  <meta charset="UTF-8">
+  <title>RAOD3R – AO3 Reader</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f4f9; padding: 20px; }
-    h1 { color: #333; }
-    input, select, button { padding: 10px; font-size: 16px; margin: 5px 0; }
-    button { cursor: pointer; background: #0077cc; color: white; border: none; border-radius: 5px; margin: 5px; }
-    button:hover { background: #005fa3; }
-    .card { background: white; border-radius: 8px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    .chapter { white-space: pre-line; margin-bottom: 20px; padding: 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    .back-btn { margin-bottom: 15px; display: inline-block; }
-    .pagination { margin-top: 15px; }
+    /* ====== Theme Variables ====== */
+    :root {
+      --bg: #f4f4f9;
+      --text: #222;
+      --card-bg: #fff;
+      --header-bg: #6200ea;
+      --header-text: #fff;
+      --button-bg: #6200ea;
+      --button-text: #fff;
+      --shadow: rgba(0,0,0,0.1);
+    }
+    body.dark {
+      --bg: #121212;
+      --text: #eee;
+      --card-bg: #1e1e1e;
+      --header-bg: #3700b3;
+      --header-text: #fff;
+      --button-bg: #bb86fc;
+      --button-text: #000;
+      --shadow: rgba(0,0,0,0.5);
+    }
+
+    /* ====== Base Styles ====== */
+    body {
+      font-family: "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.3s, color 0.3s;
+    }
+    header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 2px 6px var(--shadow);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    #dark-toggle {
+      background: transparent;
+      border: 1px solid var(--header-text);
+      color: var(--header-text);
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    /* ====== Search + Filters ====== */
+    #search-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 1rem;
+      background: var(--card-bg);
+      box-shadow: 0 2px 6px var(--shadow);
+      transition: background 0.3s;
+    }
+    #search-bar input, #search-bar select, #search-bar button {
+      padding: 0.6rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+      background: var(--card-bg);
+      color: var(--text);
+      transition: background 0.3s, color 0.3s;
+    }
+    #search-bar button {
+      background: var(--button-bg);
+      color: var(--button-text);
+      cursor: pointer;
+      border: none;
+      transition: 0.2s;
+    }
+    #search-bar button:hover {
+      opacity: 0.8;
+    }
+
+    /* ====== Story List ====== */
+    #results {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+      padding: 1rem;
+    }
+    .story-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 4px 10px var(--shadow);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s, background 0.3s, color 0.3s;
+    }
+    .story-card:hover {
+      transform: translateY(-4px);
+    }
+    .story-card h3 {
+      margin: 0 0 0.5rem;
+      font-size: 1.3rem;
+      color: var(--text);
+    }
+    .story-meta {
+      font-size: 0.9rem;
+      color: #888;
+      margin-bottom: 0.6rem;
+    }
+    body.dark .story-meta {
+      color: #aaa;
+    }
+    .story-summary {
+      flex-grow: 1;
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+    }
+    .story-card button {
+      align-self: flex-start;
+      padding: 0.5rem 0.8rem;
+      border: none;
+      border-radius: 6px;
+      background: var(--button-bg);
+      color: var(--button-text);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    /* ====== Reader View ====== */
+    #reader {
+      display: none;
+      padding: 1rem 2rem;
+      max-width: 800px;
+      margin: auto;
+      background: var(--card-bg);
+      box-shadow: 0 4px 12px var(--shadow);
+      border-radius: 12px;
+      transition: background 0.3s, color 0.3s;
+    }
+    #reader h2 {
+      margin-top: 0;
+    }
+    #reader .chapter {
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+    #back-btn {
+      margin-bottom: 1rem;
+      padding: 0.6rem 1rem;
+      border: none;
+      border-radius: 6px;
+      background: var(--button-bg);
+      color: var(--button-text);
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <h1>📖 RAOD3R</h1>
-  <div id="app"></div>
+  <header>
+    <h1>📖 RAOD3R – AO3 Reader</h1>
+    <button id="dark-toggle">🌙 Dark Mode</button>
+  </header>
+
+  <!-- Search & Filters -->
+  <section id="search-bar">
+    <input type="text" id="tag" placeholder="Search by tag (e.g. romance)">
+    <select id="rating">
+      <option value="">Any Rating</option>
+      <option>General</option>
+      <option>Teen</option>
+      <option>Mature</option>
+      <option>Explicit</option>
+    </select>
+    <input type="text" id="fandom" placeholder="Fandom (optional)">
+    <label>
+      <input type="checkbox" id="completed"> Completed only
+    </label>
+    <button onclick="doSearch()">Search</button>
+  </section>
+
+  <!-- Results -->
+  <section id="results"></section>
+
+  <!-- Reader -->
+  <section id="reader">
+    <button id="back-btn" onclick="closeReader()">⬅ Back</button>
+    <div id="story-content"></div>
+  </section>
 
   <script>
-    const API_BASE = "https://raod3r.onrender.com";
+    const API = "https://raod3r.onrender.com";
 
-    let currentPage = 1;
-    let currentTag = "";
-    let currentFilters = {};
+    async function doSearch() {
+      const tag = document.getElementById("tag").value || "romance";
+      const rating = document.getElementById("rating").value;
+      const fandom = document.getElementById("fandom").value;
+      const completed = document.getElementById("completed").checked;
 
-    async function renderSearch() {
-      document.getElementById("app").innerHTML = `
-        <div>
-          <input id="tag" placeholder="Enter tag (e.g. romance)" value="${currentTag}" />
-          <br/>
-          <label>Fandom:</label>
-          <input id="fandom" placeholder="e.g. Harry Potter" value="${currentFilters.fandom || ""}" />
-          <br/>
-          <label>Rating:</label>
-          <select id="rating">
-            <option value="">Any</option>
-            <option value="General">General</option>
-            <option value="Teen">Teen</option>
-            <option value="Mature">Mature</option>
-            <option value="Explicit">Explicit</option>
-          </select>
-          <br/>
-          <label>
-            <input type="checkbox" id="completed" ${currentFilters.completed ? "checked" : ""} />
-            Completed works only
-          </label>
-          <br/>
-          <button onclick="startSearch()">Search</button>
-        </div>
-        <div id="results"></div>
-        <div class="pagination" id="pagination"></div>
-      `;
+      let url = `${API}/search?tag=${encodeURIComponent(tag)}`;
+      if (rating) url += `&rating=${encodeURIComponent(rating)}`;
+      if (fandom) url += `&fandom=${encodeURIComponent(fandom)}`;
+      if (completed) url += `&completed=true`;
 
-      // Restore rating dropdown
-      if (currentFilters.rating) {
-        document.getElementById("rating").value = currentFilters.rating;
-      }
-
-      if (currentTag) doSearch(currentTag, currentPage, currentFilters);
-    }
-
-    function startSearch() {
-      currentTag = document.getElementById("tag").value;
-      currentFilters = {
-        fandom: document.getElementById("fandom").value,
-        rating: document.getElementById("rating").value,
-        completed: document.getElementById("completed").checked
-      };
-      currentPage = 1;
-      doSearch(currentTag, currentPage, currentFilters);
-    }
-
-    async function doSearch(tag, page, filters={}) {
-      const params = new URLSearchParams();
-      params.append("tag", tag);
-      params.append("page", page);
-      if (filters.fandom) params.append("fandom", filters.fandom);
-      if (filters.rating) params.append("rating", filters.rating);
-      if (filters.completed) params.append("completed", "true");
-
-      const res = await fetch(`${API_BASE}/search?${params.toString()}`);
+      const res = await fetch(url);
       const data = await res.json();
 
       const resultsDiv = document.getElementById("results");
       resultsDiv.innerHTML = "";
 
-      if (!data.results || data.results.length === 0) {
-        resultsDiv.innerHTML = "<p>No results found.</p>";
-        return;
-      }
-
-      data.results.forEach(item => {
+      data.results.forEach(story => {
         const card = document.createElement("div");
-        card.className = "card";
+        card.className = "story-card";
         card.innerHTML = `
-          <h2>${item.title}</h2>
-          <p><b>Author:</b> ${item.author}</p>
-          <p><b>Fandom:</b> ${item.fandom || "Unknown"}</p>
-          <p><b>Rating:</b> ${item.rating || "Unrated"}</p>
-          <p>${item.summary || "No summary available."}</p>
-          <button onclick="location.hash='#/story/${item.id}'">📖 View</button>
+          <h3>${story.title}</h3>
+          <div class="story-meta">By ${story.author} | ${story.fandom} | ${story.rating}</div>
+          <div class="story-summary">${story.summary}</div>
+          <button onclick="openStory('${story.id}')">Read</button>
         `;
         resultsDiv.appendChild(card);
       });
-
-      renderPagination();
     }
 
-    function renderPagination() {
-      const paginationDiv = document.getElementById("pagination");
-      paginationDiv.innerHTML = `
-        ${currentPage > 1 ? `<button onclick="prevPage()">⬅ Previous</button>` : ""}
-        <span> Page ${currentPage} </span>
-        <button onclick="nextPage()">Next ➡</button>
+    async function openStory(id) {
+      document.getElementById("results").style.display = "none";
+      const reader = document.getElementById("reader");
+      reader.style.display = "block";
+
+      const res = await fetch(`${API}/story/${id}`);
+      const story = await res.json();
+
+      const content = document.getElementById("story-content");
+      content.innerHTML = `
+        <h2>${story.title}</h2>
+        <p><em>By ${story.author}</em></p>
+        <p>${story.summary}</p>
+        ${story.chapters.map(c => `<div class="chapter">${c}</div>`).join("")}
       `;
     }
 
-    function prevPage() {
-      if (currentPage > 1) {
-        currentPage--;
-        doSearch(currentTag, currentPage, currentFilters);
-      }
+    function closeReader() {
+      document.getElementById("reader").style.display = "none";
+      document.getElementById("results").style.display = "grid";
     }
 
-    function nextPage() {
-      currentPage++;
-      doSearch(currentTag, currentPage, currentFilters);
+    // === Dark Mode Toggle ===
+    const darkBtn = document.getElementById("dark-toggle");
+    if (localStorage.getItem("theme") === "dark") {
+      document.body.classList.add("dark");
+      darkBtn.textContent = "☀️ Light Mode";
     }
-
-    async function renderStory(id) {
-      const res = await fetch(`${API_BASE}/story/${id}`);
-      const data = await res.json();
-      document.getElementById("app").innerHTML = `
-        <button class="back-btn" onclick="location.hash='#/search'">⬅ Back to results</button>
-        <h2>${data.title}</h2>
-        <p><b>Author:</b> ${data.author}</p>
-        <p><b>Fandom:</b> ${data.fandom || "Unknown"}</p>
-        <p><b>Rating:</b> ${data.rating || "Unrated"}</p>
-        <p>${data.summary || ""}</p>
-        <h3>Chapters:</h3>
-        <div id="chapters"></div>
-      `;
-      const chapDiv = document.getElementById("chapters");
-      data.chapters.forEach((ch, i) => {
-        const chap = document.createElement("div");
-        chap.className = "chapter";
-        chap.innerHTML = `<h4>Chapter ${i+1}</h4><p>${ch}</p>`;
-        chapDiv.appendChild(chap);
-      });
-    }
-
-    function router() {
-      const hash = location.hash || "#/search";
-      const parts = hash.split("/");
-      if (parts[1] === "search") {
-        renderSearch();
-      } else if (parts[1] === "story" && parts[2]) {
-        renderStory(parts[2]);
+    darkBtn.onclick = () => {
+      document.body.classList.toggle("dark");
+      if (document.body.classList.contains("dark")) {
+        darkBtn.textContent = "☀️ Light Mode";
+        localStorage.setItem("theme", "dark");
       } else {
-        renderSearch();
+        darkBtn.textContent = "🌙 Dark Mode";
+        localStorage.setItem("theme", "light");
       }
-    }
+    };
 
-    window.addEventListener("hashchange", router);
-    window.addEventListener("load", router);
+    // Auto-load romance on first visit
+    doSearch();
   </script>
 </body>
 </html>
