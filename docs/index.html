@@ -5,9 +5,9 @@
   <title>RAOD3R – AO3 Reader</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#6C63FF">
-
+  <meta name="theme-color" content="#6C63FF">
   <link rel="icon" href="favicon.png" type="image/png">
+
   <style>
     /* ====== Theme Variables ====== */
     :root {
@@ -216,12 +216,21 @@
       color: var(--button-text);
       cursor: pointer;
     }
+
+    /* Save Offline Button */
+    #save-offline {
+      margin-left: auto;
+      margin-top: 1rem;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>📖 RAOD3R – AO3 Reader</h1>
-    <button id="dark-toggle">🌙 Dark Mode</button>
+    <div>
+      <a href="library.html" style="margin-right:10px; color:white; text-decoration:none;">📚 Library</a>
+      <button id="dark-toggle">🌙 Dark Mode</button>
+    </div>
   </header>
 
   <!-- Search & Filters -->
@@ -255,127 +264,182 @@
     <div id="chapter-nav">
       <button onclick="prevChapter()">⬅ Previous</button>
       <button onclick="nextChapter()">Next ➡</button>
+      <button id="save-offline">📥 Save Offline</button>
     </div>
   </section>
 
+  <script src="https://cdn.jsdelivr.net/npm/idb@7/build/iife/index-min.js"></script>
   <script>
+  const { openDB } = idb;
 
   if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").then(
-      reg => console.log("Service Worker registered:", reg),
-      err => console.error("Service Worker failed:", err)
-    );
-  });
-}
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").then(
+        reg => console.log("Service Worker registered:", reg),
+        err => console.error("Service Worker failed:", err)
+      );
+    });
+  }
 
-    const API = "https://raod3r.onrender.com";
-    let currentStory = null;
-    let currentChapter = 0;
+  const API = "https://raod3r.onrender.com";
+  let currentStory = null;
+  let currentChapter = 0;
 
-    async function doSearch() {
-      const tag = document.getElementById("tag").value || "romance";
-      const rating = document.getElementById("rating").value;
-      const fandom = document.getElementById("fandom").value;
-      const completed = document.getElementById("completed").checked;
+  /* ================== PROGRESS SAVE/LOAD ================== */
+  async function saveProgress() {
+    let db = await openDB("raod3r", 1, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains("progress")) {
+          db.createObjectStore("progress", { keyPath: "id" });
+        }
+      }
+    });
+    await db.put("progress", {
+      id: currentStory.id,
+      chapter: currentChapter,
+      timestamp: Date.now()
+    });
+  }
 
-      let url = `${API}/search?tag=${encodeURIComponent(tag)}`;
-      if (rating) url += `&rating=${encodeURIComponent(rating)}`;
-      if (fandom) url += `&fandom=${encodeURIComponent(fandom)}`;
-      if (completed) url += `&completed=true`;
+  async function loadProgress(storyId) {
+    let db = await openDB("raod3r", 1);
+    return await db.get("progress", storyId);
+  }
 
-      const res = await fetch(url);
-      const data = await res.json();
+  /* ================== SEARCH ================== */
+  async function doSearch() {
+    const tag = document.getElementById("tag").value || "romance";
+    const rating = document.getElementById("rating").value;
+    const fandom = document.getElementById("fandom").value;
+    const completed = document.getElementById("completed").checked;
 
-      const resultsDiv = document.getElementById("results");
-      resultsDiv.innerHTML = "";
+    let url = `${API}/search?tag=${encodeURIComponent(tag)}`;
+    if (rating) url += `&rating=${encodeURIComponent(rating)}`;
+    if (fandom) url += `&fandom=${encodeURIComponent(fandom)}`;
+    if (completed) url += `&completed=true`;
 
-      data.results.forEach(story => {
-        const card = document.createElement("div");
-        card.className = "story-card";
-        card.innerHTML = `
-          <h3>${story.title}</h3>
-          <div class="story-meta">By ${story.author} | ${story.fandom} | ${story.rating}</div>
-          <div class="story-summary">${story.summary}</div>
-          <button onclick="openStory('${story.id}')">Read</button>
-        `;
-        resultsDiv.appendChild(card);
-      });
-    }
+    const res = await fetch(url);
+    const data = await res.json();
 
-    async function openStory(id) {
-      document.getElementById("results").style.display = "none";
-      const reader = document.getElementById("reader");
-      reader.style.display = "block";
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "";
 
+    data.results.forEach(story => {
+      const card = document.createElement("div");
+      card.className = "story-card";
+      card.innerHTML = `
+        <h3>${story.title}</h3>
+        <div class="story-meta">By ${story.author} | ${story.fandom} | ${story.rating}</div>
+        <div class="story-summary">${story.summary}</div>
+        <button onclick="openStory('${story.id}')">Read</button>
+      `;
+      resultsDiv.appendChild(card);
+    });
+  }
+
+  /* ================== OPEN STORY ================== */
+  async function openStory(id) {
+    document.getElementById("results").style.display = "none";
+    const reader = document.getElementById("reader");
+    reader.style.display = "block";
+
+    if (!navigator.onLine) {
+      let db = await openDB("raod3r", 1);
+      currentStory = await db.get("stories", id);
+      if (!currentStory) {
+        alert("⚠ Story not available offline.");
+        return;
+      }
+    } else {
       const res = await fetch(`${API}/story/${id}`);
       currentStory = await res.json();
-      currentChapter = 0;
+    }
 
+    // Load progress if exists
+    const saved = await loadProgress(id);
+    currentChapter = saved ? saved.chapter : 0;
+
+    showChapter();
+  }
+
+  /* ================== CHAPTER DISPLAY ================== */
+  function showChapter() {
+    const content = document.getElementById("story-content");
+    content.classList.remove("visible");
+    setTimeout(() => {
+      content.innerHTML = `
+        <h2>${currentStory.title}</h2>
+        <p><em>By ${currentStory.author}</em></p>
+        <p>${currentStory.summary}</p>
+        <div class="chapter">${currentStory.chapters[currentChapter]}</div>
+        <p><em>Chapter ${currentChapter + 1} of ${currentStory.chapters.length}</em></p>
+      `;
+      content.classList.add("visible");
+    }, 200);
+
+    // Save progress every time chapter changes
+    saveProgress();
+  }
+
+  function nextChapter() {
+    if (currentChapter < currentStory.chapters.length - 1) {
+      currentChapter++;
       showChapter();
     }
+  }
 
-    function showChapter() {
-      const content = document.getElementById("story-content");
-      content.classList.remove("visible");
-      setTimeout(() => {
-        content.innerHTML = `
-          <h2>${currentStory.title}</h2>
-          <p><em>By ${currentStory.author}</em></p>
-          <p>${currentStory.summary}</p>
-          <div class="chapter">${currentStory.chapters[currentChapter]}</div>
-          <p><em>Chapter ${currentChapter + 1} of ${currentStory.chapters.length}</em></p>
-        `;
-        content.classList.add("visible");
-      }, 200);
+  function prevChapter() {
+    if (currentChapter > 0) {
+      currentChapter--;
+      showChapter();
     }
+  }
 
-    function nextChapter() {
-      if (currentChapter < currentStory.chapters.length - 1) {
-        currentChapter++;
-        showChapter();
+  function closeReader() {
+    document.getElementById("reader").style.display = "none";
+    document.getElementById("results").style.display = "grid";
+  }
+
+  // === Font Adjuster ===
+  function adjustFont(delta) {
+    const style = getComputedStyle(document.documentElement);
+    let size = parseFloat(style.getPropertyValue('--font-size'));
+    size = Math.max(0.6, Math.min(2.5, size + delta));
+    document.documentElement.style.setProperty('--font-size', size + "rem");
+  }
+
+  // === Save Offline ===
+  document.getElementById("save-offline").addEventListener("click", async () => {
+    let db = await openDB("raod3r", 1, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains("stories")) {
+          db.createObjectStore("stories", { keyPath: "id" });
+        }
       }
-    }
+    });
+    await db.put("stories", currentStory);
+    alert("✅ Story saved for offline reading!");
+  });
 
-    function prevChapter() {
-      if (currentChapter > 0) {
-        currentChapter--;
-        showChapter();
-      }
-    }
-
-    function closeReader() {
-      document.getElementById("reader").style.display = "none";
-      document.getElementById("results").style.display = "grid";
-    }
-
-    // === Font Adjuster ===
-    function adjustFont(delta) {
-      const style = getComputedStyle(document.documentElement);
-      let size = parseFloat(style.getPropertyValue('--font-size'));
-      size = Math.max(0.6, Math.min(2.5, size + delta));
-      document.documentElement.style.setProperty('--font-size', size + "rem");
-    }
-
-    // === Dark Mode Toggle ===
-    const darkBtn = document.getElementById("dark-toggle");
-    if (localStorage.getItem("theme") === "dark") {
-      document.body.classList.add("dark");
+  // === Dark Mode Toggle ===
+  const darkBtn = document.getElementById("dark-toggle");
+  if (localStorage.getItem("theme") === "dark") {
+    document.body.classList.add("dark");
+    darkBtn.textContent = "☀️ Light Mode";
+  }
+  darkBtn.onclick = () => {
+    document.body.classList.toggle("dark");
+    if (document.body.classList.contains("dark")) {
       darkBtn.textContent = "☀️ Light Mode";
+      localStorage.setItem("theme", "dark");
+    } else {
+      darkBtn.textContent = "🌙 Dark Mode";
+      localStorage.setItem("theme", "light");
     }
-    darkBtn.onclick = () => {
-      document.body.classList.toggle("dark");
-      if (document.body.classList.contains("dark")) {
-        darkBtn.textContent = "☀️ Light Mode";
-        localStorage.setItem("theme", "dark");
-      } else {
-        darkBtn.textContent = "🌙 Dark Mode";
-        localStorage.setItem("theme", "light");
-      }
-    };
+  };
 
-    // Auto-load romance on first visit
-    doSearch();
+  // Auto-load romance on first visit
+  doSearch();
   </script>
 </body>
 </html>
