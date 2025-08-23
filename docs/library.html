@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>📚 RAOD3R Library</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6C63FF">
+  <style>
+    body { font-family: "Segoe UI", Roboto, sans-serif; background:#f4f4f9; margin:0; }
+    header { background:#6200ea; color:#fff; padding:1rem; text-align:center; }
+    #library { padding:1rem; display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:1rem; }
+    .story-card {
+      background:#fff; padding:1rem; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.1);
+    }
+    .story-card h3 { margin:0 0 0.5rem; font-size:1.2rem; }
+    .story-card button {
+      padding:0.4rem 0.8rem; border:none; border-radius:6px;
+      background:#6200ea; color:#fff; cursor:pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📚 Offline Library</h1>
+    <a href="index.html" style="color:white;text-decoration:none;">⬅ Back to Search</a>
+  </header>
+
+  <section id="library"></section>
+
+  <script src="https://cdn.jsdelivr.net/npm/idb@7/build/iife/index-min.js"></script>
+  <script>
+    const { openDB } = idb;
+
+    async function loadLibrary() {
+      let db = await openDB("raod3r", 1, {
+        upgrade(db) {
+          if (!db.objectStoreNames.contains("stories")) {
+            db.createObjectStore("stories", { keyPath: "id" });
+          }
+        }
+      });
+      const stories = await db.getAll("stories");
+      const container = document.getElementById("library");
+      container.innerHTML = "";
+
+      if (!stories.length) {
+        container.innerHTML = "<p>No stories saved yet.</p>";
+        return;
+      }
+
+      stories.forEach(story => {
+        const card = document.createElement("div");
+        card.className = "story-card";
+        card.innerHTML = `
+          <h3>${story.title}</h3>
+          <p><b>By:</b> ${story.author}</p>
+          <button onclick="readOffline('${story.id}')">📖 Read</button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    async function readOffline(id) {
+      localStorage.setItem("offlineStoryId", id);
+      window.location.href = "index.html#offline";
+    }
+
+    loadLibrary();
+  </script>
+</body>
+</html>
