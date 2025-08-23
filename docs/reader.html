@@ -41,6 +41,8 @@
       margin-top: 20px;
       display: flex;
       justify-content: space-between;
+      gap: 10px;
+      align-items: center;
     }
 
     button {
@@ -56,6 +58,14 @@
     button:disabled {
       background: #aaa;
       cursor: not-allowed;
+    }
+
+    select {
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      cursor: pointer;
     }
 
     h2 {
@@ -83,6 +93,7 @@
   <!-- Controls -->
   <div class="chapter-controls">
     <button id="prevBtn">← Previous</button>
+    <select id="chapterSelect"></select>
     <button id="nextBtn">Next →</button>
   </div>
 
@@ -113,6 +124,7 @@
 
       if (story) {
         storyData = story;
+        populateChapterList();
         renderChapter();
       } else {
         document.getElementById("story-title").textContent = "Error loading story";
@@ -125,8 +137,31 @@
 
       document.getElementById("prevBtn").disabled = currentChapter === 0;
       document.getElementById("nextBtn").disabled = currentChapter === storyData.chapters.length - 1;
+
+      // Sync dropdown
+      document.getElementById("chapterSelect").value = currentChapter;
     }
 
+    function populateChapterList() {
+      let select = document.getElementById("chapterSelect");
+      select.innerHTML = "";
+      storyData.chapters.forEach((_, index) => {
+        let option = document.createElement("option");
+        option.value = index;
+        option.textContent = `Chapter ${index + 1}`;
+        select.appendChild(option);
+      });
+      select.value = currentChapter;
+    }
+
+    // Dropdown change
+    document.getElementById("chapterSelect").addEventListener("change", (e) => {
+      currentChapter = parseInt(e.target.value);
+      saveReaderState(storyData.id, currentChapter);
+      renderChapter();
+    });
+
+    // Prev/Next buttons
     document.getElementById("prevBtn").addEventListener("click", () => {
       if (currentChapter > 0) {
         currentChapter--;
