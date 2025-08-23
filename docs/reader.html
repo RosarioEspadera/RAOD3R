@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>RAOD3R - Reader</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles.css">
+
+  <style>
+    body {
+      font-family: 'Merriweather', serif;
+      background: #fafafa;
+      color: #222;
+      line-height: 1.7;
+      letter-spacing: 0.3px;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    nav {
+      background: #222;
+      color: #fff;
+      padding: 10px;
+      display: flex;
+      justify-content: space-around;
+    }
+
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      padding: 6px 12px;
+    }
+
+    nav a.active {
+      font-weight: bold;
+      border-bottom: 2px solid #ff6b6b;
+    }
+
+    .chapter-controls {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #ff6b6b;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+
+    h2 {
+      margin-bottom: 10px;
+    }
+
+    #story-content {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="library.html">Library</a>
+    <a href="reader.html" id="reader-tab" class="active">Reader</a>
+  </nav>
+
+  <!-- Story -->
+  <h2 id="story-title">Loading story...</h2>
+  <div id="story-content">Please wait...</div>
+
+  <!-- Controls -->
+  <div class="chapter-controls">
+    <button id="prevBtn">← Previous</button>
+    <button id="nextBtn">Next →</button>
+  </div>
+
+  <script>
+    let storyData = null;
+    let currentChapter = 0;
+
+    async function loadReaderState() {
+      let state = localStorage.getItem("currentReader");
+      if (!state) {
+        document.getElementById("story-title").textContent = "No story selected.";
+        document.getElementById("story-content").textContent = "Go to Library and open a story.";
+        document.querySelector(".chapter-controls").style.display = "none";
+        return;
+      }
+
+      state = JSON.parse(state);
+      currentChapter = state.chapter || 0;
+
+      // Try load from IndexedDB first (offline reading)
+      let story = await getFromIndexedDB(state.storyId);
+
+      if (!story) {
+        // If not found offline, fetch from backend
+        story = await fetchStoryFromBackend(state.storyId);
+        if (story) saveToIndexedDB(story); // Save for offline
+      }
+
+      if (story) {
+        storyData = story;
+        renderChapter();
+      } else {
+        document.getElementById("story-title").textContent = "Error loading story";
+      }
+    }
+
+    function renderChapter() {
+      document.getElementById("story-title").textContent = storyData.title;
+      document.getElementById("story-content").innerHTML = storyData.chapters[currentChapter];
+
+      document.getElementById("prevBtn").disabled = currentChapter === 0;
+      document.getElementById("nextBtn").disabled = currentChapter === storyData.chapters.length - 1;
+    }
+
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      if (currentChapter > 0) {
+        currentChapter--;
+        saveReaderState(storyData.id, currentChapter);
+        renderChapter();
+      }
+    });
+
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      if (currentChapter < storyData.chapters.length - 1) {
+        currentChapter++;
+        saveReaderState(storyData.id, currentChapter);
+        renderChapter();
+      }
+    });
+
+    // Save current state
+    function saveReaderState(storyId, chapterIndex) {
+      localStorage.setItem("currentReader", JSON.stringify({
+        storyId: storyId,
+        chapter: chapterIndex
+      }));
+    }
+
+    // Fetch story from backend
+    async function fetchStoryFromBackend(storyId) {
+      try {
+        let res = await fetch(`https://raod3r-backend.onrender.com/story/${storyId}`);
+        if (!res.ok) return null;
+        return await res.json();
+      } catch (e) {
+        console.error("Failed to fetch story:", e);
+        return null;
+      }
+    }
+
+    // IndexedDB functions
+    function getDB() {
+      return new Promise((resolve, reject) => {
+        let request = indexedDB.open("RAOD3R", 1);
+        request.onupgradeneeded = e => {
+          let db = e.target.result;
+          if (!db.objectStoreNames.contains("stories")) {
+            db.createObjectStore("stories", { keyPath: "id" });
+          }
+        };
+        request.onsuccess = e => resolve(e.target.result);
+        request.onerror = e => reject(e);
+      });
+    }
+
+    async function getFromIndexedDB(id) {
+      let db = await getDB();
+      return new Promise((resolve, reject) => {
+        let tx = db.transaction("stories", "readonly");
+        let store = tx.objectStore("stories");
+        let req = store.get(id);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(null);
+      });
+    }
+
+    async function saveToIndexedDB(story) {
+      let db = await getDB();
+      let tx = db.transaction("stories", "readwrite");
+      let store = tx.objectStore("stories");
+      store.put(story);
+    }
+
+    window.onload = loadReaderState;
+  </script>
+</body>
+</html>
