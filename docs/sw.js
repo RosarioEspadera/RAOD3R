@@ -33,11 +33,14 @@ self.addEventListener("activate", event => {
   );
 });
 
-// Serve from cache first, fallback to network
 self.addEventListener("fetch", event => {
   event.respondWith(
     caches.match(event.request).then(response => {
-      return response || fetch(event.request);
+      return response || fetch(event.request).catch(err => {
+        console.error("Fetch failed; returning offline page instead.", err);
+        // You could return a fallback page here if it's an HTML request
+        return caches.match("./index.html");
+      });
     })
   );
 });
