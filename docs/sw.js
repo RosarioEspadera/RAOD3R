@@ -1,46 +1,37 @@
 const CACHE_NAME = "raod3r-cache-v1";
 const urlsToCache = [
-  "./",             // resolves to /docs/
+  "./",            
   "./index.html",
-  "./styles.css",
   "./reader.html",
-  "./library.html"
+  "./library.html",
+  "./manifest.json"
 ];
 
-// Install and cache files
+// Install SW and cache core files
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       return cache.addAll(urlsToCache);
-    }).catch(err => {
-      console.error("Failed to pre-cache:", err);
     })
   );
 });
 
-// Activate and clean old caches
+// Activate SW and clean old caches
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
-        keys.map(key => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
       )
     )
   );
 });
 
+// Serve from cache first, fallback to network
 self.addEventListener("fetch", event => {
   event.respondWith(
     caches.match(event.request).then(response => {
-      return response || fetch(event.request).catch(err => {
-        console.error("Fetch failed; returning offline page instead.", err);
-        // You could return a fallback page here if it's an HTML request
-        return caches.match("./index.html");
-      });
+      return response || fetch(event.request);
     })
   );
 });
