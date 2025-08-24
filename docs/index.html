@@ -269,7 +269,7 @@
   </section>
 
 
- <script>
+<script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").then(
@@ -331,23 +331,84 @@ async function doSearch() {
   if (fandom) url += `&fandom=${encodeURIComponent(fandom)}`;
   if (completed) url += `&completed=true`;
 
-  const res = await fetch(url);
-  const data = await res.json();
-
   const resultsDiv = document.getElementById("results");
-  resultsDiv.innerHTML = "";
+  resultsDiv.innerHTML = "<p>🔎 Searching...</p>";
 
-  data.results.forEach(story => {
-    const card = document.createElement("div");
-    card.className = "story-card";
-    card.innerHTML = `
-      <h3>${story.title}</h3>
-      <div class="story-meta">By ${story.author} | ${story.fandom} | ${story.rating}</div>
-      <div class="story-summary">${story.summary}</div>
-      <button onclick="openStory('${story.id}')">Read</button>
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Server error " + res.status);
+    const data = await res.json();
+
+    resultsDiv.innerHTML = "";
+
+    if (!data || !Array.isArray(data.results) || data.results.length === 0) {
+      resultsDiv.innerHTML = "<p>⚠ No stories found.</p>";
+      return;
+    }
+
+    data.results.forEach(story => {
+      const card = document.createElement("div");
+      card.className = "story-card";
+      card.innerHTML = `
+        <h3>${story.title}</h3>
+        <div class="story-meta">By ${story.author} | ${story.fandom} | ${story.rating}</div>
+        <div class="story-summary">${story.summary}</div>
+        <button onclick="openStory('${story.id}')">Read</button>
+      `;
+      resultsDiv.appendChild(card);
+    });
+  } catch (err) {
+    console.error("Search failed:", err);
+
+    // Fallback demo content if API fails
+    resultsDiv.innerHTML = `
+      <h3>⚠ Failed to fetch stories. Showing demo stories instead:</h3>
     `;
-    resultsDiv.appendChild(card);
-  });
+    const demoStories = [
+      {
+        id: "demo1",
+        title: "A Rose in Winter",
+        author: "Demo Author",
+        fandom: "Original",
+        rating: "General",
+        summary: "A short sample story about love and hope.",
+        chapters: ["Demo Chapter 1 content...", "Demo Chapter 2 content..."]
+      },
+      {
+        id: "demo2",
+        title: "Shadows of Tomorrow",
+        author: "Sample Writer",
+        fandom: "Mystery",
+        rating: "Teen",
+        summary: "A suspense demo story about a missing artifact.",
+        chapters: ["Demo Chapter 1...", "Demo Chapter 2..."]
+      }
+    ];
+
+    demoStories.forEach(story => {
+      const card = document.createElement("div");
+      card.className = "story-card";
+      card.innerHTML = `
+        <h3>${story.title}</h3>
+        <div class="story-meta">By ${story.author} | ${story.fandom} | ${story.rating}</div>
+        <div class="story-summary">${story.summary}</div>
+        <button onclick="openDemoStory('${story.id}')">Read</button>
+      `;
+      resultsDiv.appendChild(card);
+    });
+
+    // Store demo stories in memory for reading
+    window.demoStories = demoStories;
+  }
+}
+
+/* ================== DEMO STORY LOADER ================== */
+function openDemoStory(id) {
+  currentStory = window.demoStories.find(s => s.id === id);
+  currentChapter = 0;
+  document.getElementById("results").style.display = "none";
+  document.getElementById("reader").style.display = "block";
+  showChapter();
 }
 
 /* ================== OPEN STORY ================== */
@@ -416,6 +477,7 @@ function adjustFont(delta) {
 
 // === Save Offline ===
 document.getElementById("save-offline").addEventListener("click", async () => {
+  if (!currentStory) return;
   await saveToIndexedDB(currentStory);
   alert("✅ Story saved for offline reading!");
 });
@@ -449,6 +511,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 });
 </script>
+
 
   
   <!-- Bottom Navigation Bar -->
