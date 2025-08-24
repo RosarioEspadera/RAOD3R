@@ -2,168 +2,179 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>📚 RAOD3R Library</title>
+  <title>RAOD3R - Library</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#6C63FF">
   <style>
-    body { font-family: "Segoe UI", Roboto, sans-serif; background:#f4f4f9; margin:0; padding-bottom:70px; }
-    header { background:#6200ea; color:#fff; padding:1rem; text-align:center; }
-    #library { padding:1rem; display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:1rem; }
+    body {
+      font-family: 'Merriweather', serif;
+      background: #fafafa;
+      color: #222;
+      line-height: 1.6;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    nav {
+      background: #222;
+      color: #fff;
+      padding: 10px;
+      display: flex;
+      justify-content: space-around;
+    }
+
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      padding: 6px 12px;
+    }
+
+    nav a.active {
+      font-weight: bold;
+      border-bottom: 2px solid #ff6b6b;
+    }
+
+    .category-bar {
+      margin: 20px 0;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .category-bar button {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      background: #ff6b6b;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
     .story-card {
-      background:#fff; padding:1rem; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.1);
-      display:flex; flex-direction:column; justify-content:space-between;
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
-    .story-card h3 { margin:0 0 0.5rem; font-size:1.2rem; }
-    .story-card button {
-      padding:0.4rem 0.8rem; border:none; border-radius:6px;
-      background:#6200ea; color:#fff; cursor:pointer;
-      transition: background 0.2s ease;
+
+    .story-card h3 {
+      margin: 0 0 8px 0;
     }
-    .story-card button:hover { background:#4b00b5; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>📚 Offline Library</h1>
-    <a href="index.html" style="color:white;text-decoration:none;">⬅ Back to Search</a>
-  </header>
-
-  <section id="library"></section>
-
-  <!-- IDB Library -->
-  <script src="https://cdn.jsdelivr.net/npm/idb@7/build/iife/index-min.js"></script>
- <script>
-  const { openDB } = idb;
-
-  async function loadLibrary() {
-    let db = await openDB("raod3r", 1, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains("stories")) {
-          db.createObjectStore("stories", { keyPath: "id" });
-        }
-      }
-    });
-    const stories = await db.getAll("stories");
-    const container = document.getElementById("library");
-    container.innerHTML = "";
-
-    if (!stories.length) {
-      container.innerHTML = "<p>No stories saved yet.</p>";
-      return;
-    }
-
-    stories.forEach(story => {
-      const card = document.createElement("div");
-      card.className = "story-card";
-
-      // Find saved reading progress
-      const currentReader = JSON.parse(localStorage.getItem("currentReader") || "{}");
-      const isReading = currentReader.storyId === story.id;
-      const progress = isReading ? `(Last at chapter ${currentReader.chapter + 1})` : "";
-
-      card.innerHTML = `
-        <h3>${story.title}</h3>
-        <p><b>By:</b> ${story.author}</p>
-        <p style="font-size:0.9rem; color:gray;">${progress}</p>
-        <button onclick="readOffline('${story.id}')">📖 Read</button>
-      `;
-      container.appendChild(card);
-    });
-  }
-
-  // Save last reading state
-  function saveReaderState(storyId, chapterIndex = 0) {
-    localStorage.setItem("currentReader", JSON.stringify({
-      storyId: storyId,
-      chapter: chapterIndex
-    }));
-
-    document.getElementById("reader-tab").classList.remove("disabled");
-  }
-
-  // Open reader.html, resuming progress if available
-  async function readOffline(id) {
-    const currentReader = JSON.parse(localStorage.getItem("currentReader") || "{}");
-
-    // If this story was being read, resume last chapter
-    let chapterIndex = 0;
-    if (currentReader.storyId === id) {
-      chapterIndex = currentReader.chapter;
-    }
-
-    localStorage.setItem("offlineStoryId", id);
-    saveReaderState(id, chapterIndex);
-
-    // Pass chapter index to reader.html
-    localStorage.setItem("resumeChapter", chapterIndex);
-    window.location.href = "reader.html";
-  }
-
-  loadLibrary();
-</script>
-
-
-  <!-- Bottom Navigation Bar -->
-  <nav class="bottom-nav">
-    <a href="index.html" id="nav-search">🔍<br>Search</a>
-    <a href="library.html" id="nav-library">📚<br>Library</a>
-    <a href="#" id="nav-settings">⚙️<br>Settings</a>
-    <a href="reader.html" id="reader-tab" class="disabled">📖<br>Reader</a>
+  <!-- Navbar -->
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="library.html" class="active">Library</a>
+    <a href="reader.html">Reader</a>
   </nav>
 
-  <style>
-    .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      background: #222;
-      color: white;
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      padding: 0.5rem 0;
-      font-family: Arial, sans-serif;
-      z-index: 1000;
-    }
-    .bottom-nav a {
-      color: white;
-      text-decoration: none;
-      text-align: center;
-      flex: 1;
-      font-size: 0.9rem;
-      padding: 0.3rem;
-    }
-    .bottom-nav a.active {
-      color: #ffd700; /* gold highlight */
-      border-top: 2px solid #ffd700;
-      font-weight: bold;
-    }
-    .bottom-nav a.disabled {
-      opacity: 0.5;
-      pointer-events: none;
-    }
-  </style>
+  <!-- Category Bar -->
+  <div class="category-bar">
+    <button onclick="showCategory('romance')">Romance</button>
+    <button onclick="showCategory('mystery')">Mystery</button>
+    <button onclick="showCategory('adventure')">Adventure</button>
+    <button onclick="showCategory('sci-fi')">Sci-Fi</button>
+    <button onclick="showCategory('fantasy')">Fantasy</button>
+  </div>
+
+  <!-- Stories -->
+  <div id="story-list">
+    <p>Loading categories... please wait.</p>
+  </div>
 
   <script>
-    // Highlight active tab based on current page
-    const path = window.location.pathname;
-    if (path.includes("index.html") || path === "/" || path === "/RAOD3R/") {
-      document.getElementById("nav-search").classList.add("active");
-    } else if (path.includes("library.html")) {
-      document.getElementById("nav-library").classList.add("active");
-    } else if (path.includes("reader.html")) {
-      document.getElementById("reader-tab").classList.add("active");
-    } else {
-      document.getElementById("nav-settings").classList.add("active");
+    let categoryStories = {}; // Cache in memory
+    const categories = ["romance", "mystery", "adventure", "sci-fi", "fantasy"];
+
+    async function preloadCategories() {
+      for (let cat of categories) {
+        try {
+          let res = await fetch(`https://raod3r-backend.onrender.com/search?tag=${cat}&limit=100`);
+          if (res.ok) {
+            let data = await res.json();
+            categoryStories[cat] = data.results;
+            saveCategoryToIndexedDB(cat, data.results);
+          } else {
+            // Try loading from IndexedDB if fetch fails
+            categoryStories[cat] = await getCategoryFromIndexedDB(cat) || [];
+          }
+        } catch (e) {
+          console.error("❌ Failed to load category:", cat, e);
+          categoryStories[cat] = await getCategoryFromIndexedDB(cat) || [];
+        }
+      }
+      document.getElementById("story-list").innerHTML = `<p>Select a category above.</p>`;
+      console.log("✅ Categories preloaded:", Object.keys(categoryStories));
     }
 
-    // Auto-enable Reader tab if there’s saved state
-    if (localStorage.getItem("currentReader")) {
-      document.getElementById("reader-tab").classList.remove("disabled");
+    function showCategory(cat) {
+      let container = document.getElementById("story-list");
+      container.innerHTML = "";
+
+      let stories = categoryStories[cat] || [];
+      if (stories.length === 0) {
+        container.innerHTML = `<p>No stories found in ${cat}.</p>`;
+        return;
+      }
+
+      stories.forEach(story => {
+        let div = document.createElement("div");
+        div.className = "story-card";
+        div.innerHTML = `
+          <h3>${story.title}</h3>
+          <p><strong>Author:</strong> ${story.author || "Unknown"}</p>
+          <button onclick="openStory('${story.id}')">Read</button>
+        `;
+        container.appendChild(div);
+      });
     }
+
+    function openStory(storyId) {
+      localStorage.setItem("currentReader", JSON.stringify({
+        storyId: storyId,
+        chapter: 0
+      }));
+      window.location.href = "reader.html";
+    }
+
+    // IndexedDB setup
+    function getDB() {
+      return new Promise((resolve, reject) => {
+        let request = indexedDB.open("RAOD3R", 2);
+        request.onupgradeneeded = e => {
+          let db = e.target.result;
+          if (!db.objectStoreNames.contains("categories")) {
+            db.createObjectStore("categories", { keyPath: "id" });
+          }
+        };
+        request.onsuccess = e => resolve(e.target.result);
+        request.onerror = e => reject(e);
+      });
+    }
+
+    async function saveCategoryToIndexedDB(cat, stories) {
+      let db = await getDB();
+      let tx = db.transaction("categories", "readwrite");
+      let store = tx.objectStore("categories");
+      store.put({ id: cat, stories });
+    }
+
+    async function getCategoryFromIndexedDB(cat) {
+      let db = await getDB();
+      return new Promise((resolve, reject) => {
+        let tx = db.transaction("categories", "readonly");
+        let store = tx.objectStore("categories");
+        let req = store.get(cat);
+        req.onsuccess = () => resolve(req.result ? req.result.stories : null);
+        req.onerror = () => reject(null);
+      });
+    }
+
+    window.onload = preloadCategories;
   </script>
-
 </body>
 </html>
